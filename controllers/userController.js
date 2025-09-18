@@ -1,3 +1,4 @@
+const User = require("../models/userModel");
 const { comparePassword, hashPassword } = require("../utils/auth");
 
 const registerUser = async (req, res) => {
