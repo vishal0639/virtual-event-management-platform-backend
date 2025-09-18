@@ -1,9 +1,6 @@
 const express = require("express");
 const userController = require("../controllers/userController");
-const {
-  validateRegisterBody,
-  validateLoginBody,
-} = require("../middlewares/validateBody");
+const { validateRegisterBody, validateLoginBody } = require("../middlewares/validateBody");
 
 const router = express.Router();
 
