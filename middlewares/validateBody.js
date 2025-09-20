@@ -3,14 +3,14 @@ const validateLoginBody = (err, req, res, next) => {
     return res.status(400).json({ message: "Invalid request body" });
   }
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     let errors = [];
 
-    // Email validation
-    if (!email || typeof email !== "string" || email.trim() === "") {
-      errors.push("email is required");
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      errors.push("please provide a valid email address");
+    // Username (email) validation
+    if (!username || typeof username !== "string" || username.trim() === "") {
+      errors.push("username is required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username.trim())) {
+      errors.push("username must be a valid email address");
     }
 
     // Password validation
@@ -35,14 +35,14 @@ const validateLoginBody = (err, req, res, next) => {
 
 const validateRegisterBody = (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    const { username, password } = req.body;
     let errors = [];
 
-    // Email validation
-    if (!email || typeof email !== "string" || email.trim() === "") {
-      errors.push("email is required");
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      errors.push("please provide a valid email address");
+    // Username (email) validation
+    if (!username || typeof username !== "string" || username.trim() === "") {
+      errors.push("username is required");
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username.trim())) {
+      errors.push("username must be a valid email address");
     }
 
     // Password validation

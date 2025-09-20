@@ -4,7 +4,7 @@ const User = require("../models/userModel");
 // GET /events - Get all events
 const getAllEvents = async (req, res) => {
   try {
-    const events = await Event.find().populate('participants', 'username email');
+    const events = await Event.find().populate('participants', 'username');
     res.status(200).json({
       message: "Events retrieved successfully",
       events: events,
@@ -51,7 +51,7 @@ const createEvent = async (req, res) => {
 const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-    const event = await Event.findById(id).populate('participants', 'username email');
+    const event = await Event.findById(id).populate('participants', 'username');
 
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
@@ -80,7 +80,7 @@ const updateEvent = async (req, res) => {
       id,
       { date, time, description, participants },
       { new: true, runValidators: true }
-    ).populate('participants', 'username email');
+    ).populate('participants', 'username');
 
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
@@ -159,12 +159,12 @@ const registerForEvent = async (req, res) => {
     await event.addParticipant(userId);
 
     // Get updated event with populated participants
-    const updatedEvent = await Event.findById(id).populate('participants', 'username email');
+    const updatedEvent = await Event.findById(id).populate('participants', 'username');
 
     res.status(200).json({
       message: "Successfully registered for event",
       event: updatedEvent,
-      registeredUser: { id: user._id, email: user.email || user.username }
+      registeredUser: { id: user._id, username: user.username }
     });
   } catch (error) {
     console.log("error", error);
