@@ -1,54 +1,28 @@
-class User {
-  constructor(username, password) {
-    this.id = User.generateId();
-    this.username = username;
-    this.password = password;
-  }
+const mongoose = require("mongoose");
 
-  static generateId() {
-    return Date.now().toString() + Math.random().toString(36).substr(2, 9);
-  }
+const userSchema = new mongoose.Schema({
+  username: { 
+    type: String, 
+    required: [true, 'Email is required'], 
+    unique: true,
+    lowercase: true,
+    validate: {
+      validator: function(email) {
+        // Email validation regex
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      },
+      message: 'Please provide a valid email address'
+    }
+  },
+  password: { 
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: [5, 'Password must be at least 5 characters long']
+  },
+}, {
+  timestamps: true // Adds createdAt and updatedAt fields
+});
 
-  // Schema definition - similar to MongoDB schema
-  static schema = {
-    id: { type: 'String', unique: true },
-    username: { type: 'String', required: true, unique: true },
-    password: { type: 'String', required: true }
-  }
-
-//   update(updates) {
-//     const allowedUpdates = ["preferences"];
-
-//     Object.keys(updates).forEach((key) => {
-//       if (allowedUpdates.includes(key)) {
-//         if (key === "preferences") {
-//           // Only update valid subfields inside preferences
-//           const allowedPref = ["category", "country", "language"];
-//           this.preferences = {
-//             ...this.preferences,
-//             ...Object.fromEntries(
-//               Object.entries(updates.preferences || {}).filter(([k]) =>
-//                 allowedPref.includes(k)
-//               )
-//             ),
-//           };
-//         } else {
-//           this[key] = updates[key];
-//         }
-//       }
-//     });
-
-//     this.updatedAt = new Date().toISOString();
-//     return this;
-//   }
-
-  toJSON() {
-    return {
-      id: this.id,
-      username: this.username,
-      password: this.password,
-    };
-  }
-}
+const User = mongoose.model("User", userSchema);
 
 module.exports = User;

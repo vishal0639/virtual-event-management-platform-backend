@@ -1,47 +1,52 @@
-const { getUsersData, saveUsersData } = require("../fileService/userFileService");
 const User = require("../models/userModel");
 const { comparePassword, hashPassword } = require("../utils/auth");
 const { createToken } = require("../utils/jwtUtils");
 
-const users = getUsersData();
-
 const registerUser = async (req, res) => {
   try {
     const { username, password } = req.body;
-    const isExistingUser = users.find((user) => (user.name = username));
-    if (isExistingUser) {
+    
+    // Check if user already exists
+    const existingUser = await User.findOne({ username: username });
+    if (existingUser) {
       return res.status(409).json({
-        message: "Username already exists",
+        message: "Email already exists",
       });
     }
+    
     const hashedPassword = await hashPassword(password);
 
-    const user = new User(username, hashedPassword);
+    const user = new User({
+      username: username,
+      password: hashedPassword
+    });
 
-    console.log(users, "users");
-
-    users.push(user);
-
-    saveUsersData(users);
+    const savedUser = await user.save();
 
     res.status(201).json({
       message: "User registered successfully",
       user: {
-        id: user.id,
-        username: user.username,
+        id: savedUser._id,
+        username: savedUser.username,
       },
     });
   } catch (error) {
     console.log("error", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Validation Error",
+        details: Object.values(error.errors).map(err => err.message)
+      });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-const loginUser = (req, res) => {
+const loginUser = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    const user = users.find((user) => user.username == username);
+    const user = await User.findOne({ username: username });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -53,11 +58,11 @@ const loginUser = (req, res) => {
       return res.status(401).json({ message: "Invalid password" });
     }
 
-    const token = createToken(user.id);
+    const token = createToken(user._id);
 
     res.status(200).json({
       message: "Login successful",
-      user: { id: user.id, username: user.username, token },
+      user: { id: user._id, username: user.username, token },
     });
   } catch (error) {
     console.log("error", error);

@@ -1,12 +1,10 @@
-const { getEventsData, saveEventsData } = require("../fileService/eventFileService");
-const { getUsersData } = require("../fileService/userFileService");
 const Event = require("../models/eventModel");
-
-const events = getEventsData();
+const User = require("../models/userModel");
 
 // GET /events - Get all events
-const getAllEvents = (req, res) => {
+const getAllEvents = async (req, res) => {
   try {
+    const events = await Event.find().populate('participants', 'username email');
     res.status(200).json({
       message: "Events retrieved successfully",
       events: events,
@@ -19,39 +17,41 @@ const getAllEvents = (req, res) => {
 };
 
 // POST /events - Create new event
-const createEvent = (req, res) => {
+const createEvent = async (req, res) => {
   try {
     const { date, time, description, participants = [] } = req.body;
 
-    // Validate required fields
-    if (!date || !time || !description) {
-      return res.status(400).json({
-        message: "Date, time, and description are required fields"
-      });
-    }
-
     // Create new event
-    const event = new Event(date, time, description, participants);
-    events.push(event);
+    const event = new Event({
+      date,
+      time,
+      description,
+      participants
+    });
 
-    // Save to file
-    saveEventsData(events);
+    const savedEvent = await event.save();
 
     res.status(201).json({
       message: "Event created successfully",
-      event: event.toJSON()
+      event: savedEvent
     });
   } catch (error) {
     console.log("error", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Validation Error",
+        details: Object.values(error.errors).map(err => err.message)
+      });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 // GET /events/:id - Get single event
-const getEventById = (req, res) => {
+const getEventById = async (req, res) => {
   try {
     const { id } = req.params;
-    const event = events.find(event => event.id === id);
+    const event = await Event.findById(id).populate('participants', 'username email');
 
     if (!event) {
       return res.status(404).json({ message: "Event not found" });
@@ -63,69 +63,73 @@ const getEventById = (req, res) => {
     });
   } catch (error) {
     console.log("error", error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid event ID format" });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 // PUT /events/:id - Update event
-const updateEvent = (req, res) => {
+const updateEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const { date, time, description, participants } = req.body;
 
-    const eventIndex = events.findIndex(event => event.id === id);
+    const event = await Event.findByIdAndUpdate(
+      id,
+      { date, time, description, participants },
+      { new: true, runValidators: true }
+    ).populate('participants', 'username email');
 
-    if (eventIndex === -1) {
+    if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Update event fields
-    if (date !== undefined) events[eventIndex].date = date;
-    if (time !== undefined) events[eventIndex].time = time;
-    if (description !== undefined) events[eventIndex].description = description;
-    if (participants !== undefined) events[eventIndex].participants = participants;
-
-    // Save to file
-    saveEventsData(events);
-
     res.status(200).json({
       message: "Event updated successfully",
-      event: events[eventIndex]
+      event: event
     });
   } catch (error) {
     console.log("error", error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        message: "Validation Error",
+        details: Object.values(error.errors).map(err => err.message)
+      });
+    }
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid event ID format" });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 // DELETE /events/:id - Delete event
-const deleteEvent = (req, res) => {
+const deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    const eventIndex = events.findIndex(event => event.id === id);
+    const event = await Event.findByIdAndDelete(id);
 
-    if (eventIndex === -1) {
+    if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Remove event from array
-    const deletedEvent = events.splice(eventIndex, 1)[0];
-
-    // Save to file
-    saveEventsData(events);
-
     res.status(200).json({
       message: "Event deleted successfully",
-      event: deletedEvent
+      event: event
     });
   } catch (error) {
     console.log("error", error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid event ID format" });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 // POST /events/:id/register - Register user for event
-const registerForEvent = (req, res) => {
+const registerForEvent = async (req, res) => {
   try {
     const { id } = req.params;
     const { userId } = req.body;
@@ -135,36 +139,38 @@ const registerForEvent = (req, res) => {
     }
 
     // Find the event
-    const eventIndex = events.findIndex(event => event.id === id);
-    if (eventIndex === -1) {
+    const event = await Event.findById(id);
+    if (!event) {
       return res.status(404).json({ message: "Event not found" });
     }
 
     // Verify user exists
-    const users = getUsersData();
-    const user = users.find(user => user.id === userId);
+    const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Check if user is already registered
-    if (events[eventIndex].participants.includes(userId)) {
+    if (event.hasParticipant(userId)) {
       return res.status(409).json({ message: "User is already registered for this event" });
     }
 
-    // Add user to participants
-    events[eventIndex].participants.push(userId);
+    // Add user to participants using the schema method
+    await event.addParticipant(userId);
 
-    // Save to file
-    saveEventsData(events);
+    // Get updated event with populated participants
+    const updatedEvent = await Event.findById(id).populate('participants', 'username email');
 
     res.status(200).json({
       message: "Successfully registered for event",
-      event: events[eventIndex],
-      registeredUser: { id: user.id, username: user.username }
+      event: updatedEvent,
+      registeredUser: { id: user._id, email: user.email || user.username }
     });
   } catch (error) {
     console.log("error", error);
+    if (error.name === 'CastError') {
+      return res.status(400).json({ message: "Invalid ID format" });
+    }
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

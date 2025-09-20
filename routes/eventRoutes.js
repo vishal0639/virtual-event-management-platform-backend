@@ -1,6 +1,6 @@
 const express = require("express");
 const eventController = require("../controllers/eventController");
-// const { validateEventBody } = require("../middlewares/validateBody");
+const { validateEventBody } = require("../middlewares/validateBody");
 
 const router = express.Router();
 
@@ -8,13 +8,13 @@ const router = express.Router();
 router.get("/", eventController.getAllEvents);
 
 // POST /events - Create new event
-router.post("/", eventController.createEvent);
+router.post("/", validateEventBody, eventController.createEvent);
 
 // GET /events/:id - Get single event
 router.get("/:id", eventController.getEventById);
 
 // PUT /events/:id - Update event
-router.put("/:id", eventController.updateEvent);
+router.put("/:id", validateEventBody, eventController.updateEvent);
 
 // DELETE /events/:id - Delete event
 router.delete("/:id", eventController.deleteEvent);
