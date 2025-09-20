@@ -76,6 +76,35 @@ For protected endpoints, include the access token in the Authorization header:
 Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 ```
 
+### 🔄 Token Expiration Handling
+
+When an access token expires, the API returns:
+```json
+{
+  "message": "Access token expired",
+  "code": "TOKEN_EXPIRED"
+}
+```
+
+**Frontend Flow:**
+1. **API Request** → Receive `TOKEN_EXPIRED` error
+2. **Auto-Refresh** → Call `/users/refresh-token` with refresh token
+3. **Get New Token** → Update stored access token  
+4. **Retry Request** → Resend original API request with new token
+5. **If Refresh Fails** → Redirect user to login page
+
+### 🔒 Protected vs Public Endpoints
+
+#### Public Endpoints (No Auth Required):
+- `GET /events` - View all events
+- `GET /events/:id` - View single event
+
+#### Protected Endpoints (Auth Required):
+- `POST /events` - Create event
+- `PUT /events/:id` - Update event
+- `DELETE /events/:id` - Delete event
+- `POST /events/:id/register` - Register for event
+
 ### Authentication Endpoints
 
 #### Register User
@@ -224,7 +253,60 @@ Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 }
 ```
 
-**Note**: Most event endpoints can be accessed without authentication, but user-specific operations require valid access tokens.
+### 🚨 Common Authentication Errors
+
+| Error Code | Message | Action |
+|------------|---------|---------|
+| `TOKEN_MISSING` | Access token required | Include Bearer token in header |
+| `TOKEN_EXPIRED` | Access token expired | Use refresh token to get new access token |
+| `INVALID_TOKEN` | Invalid access token | Re-authenticate user |
+| `INVALID_TOKEN_TYPE` | Invalid token type | Use access token, not refresh token |
+
+### 📱 Frontend Implementation Example
+
+```javascript
+// Auto-refresh token implementation
+async function apiRequest(url, options = {}) {
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${getAccessToken()}`,
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+
+    if (response.status === 401) {
+      const error = await response.json();
+      
+      if (error.code === 'TOKEN_EXPIRED') {
+        // Try to refresh token
+        const newToken = await refreshAccessToken();
+        if (newToken) {
+          // Retry original request with new token
+          return fetch(url, {
+            ...options,
+            headers: {
+              'Authorization': `Bearer ${newToken}`,
+              'Content-Type': 'application/json',
+              ...options.headers
+            }
+          });
+        }
+      }
+      
+      // Refresh failed - redirect to login
+      redirectToLogin();
+    }
+
+    return response;
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+}
+```
 
 ## 🗂️ Project Structure
 
@@ -240,7 +322,8 @@ virtual-event-management-platform-backend/
 │   ├── userRoutes.js         # User API routes
 │   └── eventRoutes.js        # Event API routes
 ├── middlewares/
-│   └── validateBody.js       # Request validation middleware
+│   ├── validateBody.js       # Request validation middleware
+│   └── authMiddleware.js     # JWT authentication middleware
 ├── utils/
 │   ├── auth.js               # Password hashing utilities
 │   └── jwtUtils.js           # JWT token utilities
