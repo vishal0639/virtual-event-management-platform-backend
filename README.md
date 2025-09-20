@@ -319,7 +319,6 @@ This project is licensed under the MIT License.
 
 ## 📞 Support
 
-For support or questions, please contact [your-email@example.com]
 
 ---
 
