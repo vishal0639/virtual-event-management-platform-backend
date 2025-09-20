@@ -1,9 +1,13 @@
+const { getUsersData } = require("../fileService/userFileService");
 const User = require("../models/userModel");
 const { comparePassword, hashPassword } = require("../utils/auth");
+const { createToken } = require("../utils/jwtUtils");
+
+const users = getUsersData();
 
 const registerUser = async (req, res) => {
   try {
-    const { username, password, preferences = {} } = req.body;
+    const { username, password } = req.body;
     const isExistingUser = users.find((user) => (user.name = username));
     if (isExistingUser) {
       return res.status(409).json({
@@ -12,13 +16,10 @@ const registerUser = async (req, res) => {
     }
     const hashedPassword = await hashPassword(password);
 
-    const defaultPreferences = {};
+    const user = new User(username, hashedPassword);
 
-    const finalPreferences = { ...defaultPreferences, ...preferences };
-
-    const user = new User(username, hashedPassword, finalPreferences);
-    console.log(user, "user");
     console.log(users, "users");
+
     users.push(user);
 
     fs.writeFileSync(USERS_FILE, JSON.stringify({ users }, null, 2));
@@ -28,7 +29,6 @@ const registerUser = async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
-        preferences: user.preferences,
       },
     });
   } catch (error) {
