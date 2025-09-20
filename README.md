@@ -70,6 +70,12 @@ The server will start on `http://localhost:3000`
 http://localhost:3000/api/v1
 ```
 
+### 🔐 Authentication Headers
+For protected endpoints, include the access token in the Authorization header:
+```http
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
+```
+
 ### Authentication Endpoints
 
 #### Register User
@@ -105,14 +111,39 @@ Content-Type: application/json
 }
 ```
 
+#### Refresh Access Token
+```http
+POST /users/refresh-token
+Content-Type: application/json
+
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response:**
+```json
+{
+  "message": "Token refreshed successfully",
+  "tokens": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresIn": "15m"
+  }
+}
+```
+
 **Response:**
 ```json
 {
   "message": "Login successful",
   "user": {
     "id": "507f1f77bcf86cd799439011",
-    "username": "user@example.com",
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    "username": "user@example.com"
+  },
+  "tokens": {
+    "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "expiresIn": "15m"
   }
 }
 ```
@@ -186,11 +217,14 @@ DELETE /events/:id
 ```http
 POST /events/:id/register
 Content-Type: application/json
+Authorization: Bearer YOUR_ACCESS_TOKEN_HERE
 
 {
   "userId": "507f1f77bcf86cd799439012"
 }
 ```
+
+**Note**: Most event endpoints can be accessed without authentication, but user-specific operations require valid access tokens.
 
 ## 🗂️ Project Structure
 
@@ -301,7 +335,8 @@ curl -X POST http://localhost:3000/api/v1/events \
 ## 🔒 Security Features
 
 - **Password Hashing**: Bcrypt with salt rounds
-- **JWT Authentication**: Secure token-based authentication
+- **Dual-Token Authentication**: Access tokens (15m) + Refresh tokens (7d)
+- **Token Security**: Separate token types with different expiration times
 - **Input Validation**: Comprehensive request validation
 - **MongoDB Injection Prevention**: Mongoose ODM protection
 

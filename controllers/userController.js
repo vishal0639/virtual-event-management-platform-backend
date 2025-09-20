@@ -1,6 +1,6 @@
 const User = require("../models/userModel");
 const { comparePassword, hashPassword } = require("../utils/auth");
-const { createToken } = require("../utils/jwtUtils");
+const { createToken, createRefreshToken, verifyToken } = require("../utils/jwtUtils");
 
 const registerUser = async (req, res) => {
   try {
@@ -58,11 +58,17 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid password" });
     }
 
-    const token = createToken(user._id);
+    const accessToken = createToken(user._id);
+    const refreshToken = createRefreshToken(user._id);
 
     res.status(200).json({
       message: "Login successful",
-      user: { id: user._id, username: user.username, token },
+      user: { id: user._id, username: user.username },
+      tokens: {
+        accessToken,
+        refreshToken,
+        expiresIn: "15m" // Access token expires in 15 minutes
+      }
     });
   } catch (error) {
     console.log("error", error);
@@ -70,7 +76,47 @@ const loginUser = async (req, res) => {
   }
 };
 
+const refreshAccessToken = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Refresh token is required" });
+    }
+
+    // Verify the refresh token
+    const decoded = verifyToken(refreshToken);
+
+    // Check if it's actually a refresh token
+    if (decoded.type !== 'refresh') {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    // Verify user still exists
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate new access token
+    const newAccessToken = createToken(decoded.userId);
+
+    res.status(200).json({
+      message: "Token refreshed successfully",
+      tokens: {
+        accessToken: newAccessToken,
+        expiresIn: "15m"
+      }
+    });
+
+  } catch (error) {
+    console.log("error", error);
+    return res.status(401).json({ message: "Invalid or expired refresh token" });
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
+  refreshAccessToken,
 };
