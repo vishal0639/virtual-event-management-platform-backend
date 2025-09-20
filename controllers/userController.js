@@ -1,4 +1,4 @@
-const { getUsersData } = require("../fileService/userFileService");
+const { getUsersData, saveUsersData } = require("../fileService/userFileService");
 const User = require("../models/userModel");
 const { comparePassword, hashPassword } = require("../utils/auth");
 const { createToken } = require("../utils/jwtUtils");
@@ -22,7 +22,7 @@ const registerUser = async (req, res) => {
 
     users.push(user);
 
-    fs.writeFileSync(USERS_FILE, JSON.stringify({ users }, null, 2));
+    saveUsersData(users);
 
     res.status(201).json({
       message: "User registered successfully",

@@ -9,6 +9,13 @@ class User {
     return Date.now().toString() + Math.random().toString(36).substr(2, 9);
   }
 
+  // Schema definition - similar to MongoDB schema
+  static schema = {
+    id: { type: 'String', unique: true },
+    username: { type: 'String', required: true, unique: true },
+    password: { type: 'String', required: true }
+  }
+
 //   update(updates) {
 //     const allowedUpdates = ["preferences"];
 
